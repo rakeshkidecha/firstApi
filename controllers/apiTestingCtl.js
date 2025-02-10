@@ -4,10 +4,66 @@ const fs = require('fs');
 
 module.exports.getData = async (req,res)=>{
     try {
-        const userData = await User.find();
-        return res.status(200).json({msg:"get data successfully",data:userData})
+
+        let search = '';
+        let page = 0, perPage = 2;
+        let sort,sortFeild;
+
+        if(req.query.search){
+            search = req.query.search;
+        }
+
+        if(req.query.page){
+            page = req.query.page;
+        }
+
+        if(req.query.sort){
+            sort = req.query.sort;
+        }
+
+        if(req.query.sortFeild){
+            sortFeild = req.query.sortFeild;
+        }
+
+        const userData = await User.find({
+            status:true,
+            $or:[
+                {username:{$regex:search,$options:'i'}},
+                {email:{$regex:search,$options:'i'}},
+                {gender:{$regex:search,$options:'i'}},
+                {hobby:{$regex:search,$options:'i'}},
+                {city:{$regex:search,$options:'i'}},
+            ]
+        }).sort({...(sort&&sortFeild&&{[sortFeild]:JSON.parse(sort)})}).skip(page*perPage).limit(perPage);
+
+        const userActiveData = await User.find({
+            status:true,
+            $or:[
+                {username:{$regex:search,$options:'i'}},
+                {email:{$regex:search,$options:'i'}},
+                {gender:{$regex:search,$options:'i'}},
+                {hobby:{$regex:search,$options:'i'}},
+                {city:{$regex:search,$options:'i'}},
+            ]
+        }).countDocuments();
+
+        const totalPage = Math.ceil(userActiveData/perPage);
+ 
+        const deactiveData = await User.find({status:false});
+
+        return res.status(200).json({
+            msg:"get data successfully",
+            data:userData,
+            deactiveData:deactiveData,
+            ...(search&&{search}),
+            totalPage,
+            page,
+            ...(sort&&{sort}),
+            ...(sortFeild&&{sortFeild}),
+        })
     } catch (err) {
-        return res.status(400).json({msg:"Something Wrong",err});
+        console.log(err)
+        return res.status(400).json({msg:"Something Wrong",error:err});
     }
 }
 
@@ -108,6 +164,41 @@ module.exports.updateData = async(req,res)=>{
 module.exports.profile = async (req,res)=>{
     try {
         return res.status(200).json({msg:"Profile Founded",data:req.user});
+    } catch (err) {
+        return res.status(400).json({msg:"Something Wrong",err});
+    }
+};
+
+module.exports.chnageStatus = async(req,res)=>{
+    try {
+        let {id,status} = req.query;
+        status = JSON.parse(status);
+        const isExistUser = await User.findById(id);
+        if(isExistUser){    
+            const updatedData = await User.findByIdAndUpdate(id,{status:!status});
+            if(updatedData){
+                return res.status(200).json({msg:"Status Updated"});
+            }else{
+                return res.status(200).json({msg:"Status not Updated"});
+            }
+        }else{
+            return res.status(401).json({msg:"User not Found"});
+        }
+    } catch (err) {
+        console.log(err)
+        return res.status(400).json({msg:"Something Wrong",err});
+    }
+};
+
+module.exports.deleteAll = async(req,res)=>{
+    try {
+        console.log(req.body)
+        const deleteAll = await User.deleteMany({_id:{$in:req.body.userId}});
+        if(deleteAll){
+            return res.status(200).json({msg:"All Data Deleted"});
+        }else{
+            return res.status(200).json({msg:"Failed to Delete all data"});
+        }
     } catch (err) {
         return res.status(400).json({msg:"Something Wrong",err});
     }

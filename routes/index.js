@@ -22,4 +22,8 @@ router.patch('/updateData/:id',passport.authenticate('jwt',{failureRedirect:'/un
 
 router.get('/profile',passport.authenticate('jwt',{failureRedirect:'/unauth'}),apiTestingCtl.profile);
 
+router.get('/chnageStatus',passport.authenticate('jwt',{failureRedirect:'/unauth'}),apiTestingCtl.chnageStatus);
+
+router.post('/deleteAll',passport.authenticate('jwt',{failureRedirect:'/unauth'}),apiTestingCtl.deleteAll)
+
 module.exports = router;
